@@ -110,6 +110,21 @@ export default function DashboardPage() {
   const [scheduledTasks, setScheduledTasks] = useState<ScheduledTask[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [debriefs, setDebriefs] = useState<WeeklyDebrief[]>([]);
+  const [monthlyReports, setMonthlyReports] = useState<any[]>([]);
+  const [generatingReport, setGeneratingReport] = useState(false);
+  const [moodTasks, setMoodTasks] = useState<Task[]>([]);
+  const [selectedMood, setSelectedMood] = useState<string>('');
+  const [loadingMood, setLoadingMood] = useState(false);
+  const [focusBlocks, setFocusBlocks] = useState<any[]>([]);
+  const [loadingFocus, setLoadingFocus] = useState(false);
+  const [showFocusModal, setShowFocusModal] = useState(false);
+  const [objectiveClarityWarning, setObjectiveClarityWarning] = useState<string | null>(null);
+  const [taskObjectiveClarityWarning, setTaskObjectiveClarityWarning] = useState<string | null>(null);
+  const [gapAnalysis, setGapAnalysis] = useState<string | null>(null);
+  const [taskGapAnalysis, setTaskGapAnalysis] = useState<string | null>(null);
+  const [suggestedBreakdown, setSuggestedBreakdown] = useState<any[]>([]);
+  const [loadingBreakdown, setLoadingBreakdown] = useState(false);
+  const [selectedBreakdownTasks, setSelectedBreakdownTasks] = useState<Record<number, boolean>>({});
 
   // Selected Detail views
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -203,12 +218,13 @@ export default function DashboardPage() {
 
   const refreshAllData = async () => {
     try {
-      const [projRes, habitRes, schedRes, notifRes, debriefRes] = await Promise.all([
+      const [projRes, habitRes, schedRes, notifRes, debriefRes, reportRes] = await Promise.all([
         fetch('/api/projects'),
         fetch('/api/habits'),
         fetch('/api/scheduled'),
         fetch('/api/notifications'),
-        fetch('/api/debriefs')
+        fetch('/api/debriefs'),
+        fetch('/api/reports')
       ]);
 
       const projs = await projRes.json();
@@ -216,6 +232,7 @@ export default function DashboardPage() {
       const sched = await schedRes.json();
       const notifs = await notifRes.json();
       const debs = await debriefRes.json();
+      const reps = await reportRes.json();
 
       // Trigger native notification for any newly fetched unread notification
       if (notifications && notifications.length > 0 && typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
@@ -242,6 +259,7 @@ export default function DashboardPage() {
       setScheduledTasks(sched);
       setNotifications(notifs);
       setDebriefs(debs);
+      setMonthlyReports(reps);
 
       // Refresh selected details state to pick up newest values
       if (selectedProject) {
@@ -527,6 +545,165 @@ export default function DashboardPage() {
     }
   };
 
+  // Generate Monthly Productivity Report (AI 16)
+  const handleGenerateMonthlyReport = async () => {
+    setGeneratingReport(true);
+    try {
+      const res = await fetch('/api/reports', { method: 'POST' });
+      if (!res.ok) throw new Error('Monthly report generation failed');
+      await refreshAllData();
+      alert('Monthly Productivity Report generated successfully!');
+    } catch (e) {
+      console.error(e);
+      alert('Failed generating monthly report');
+    } finally {
+      setGeneratingReport(false);
+    }
+  };
+
+  // Mood-Aware Reprioritizer (AI 14)
+  const handleMoodReprioritize = async (mood: string, projectId?: string) => {
+    setSelectedMood(mood);
+    setLoadingMood(true);
+    try {
+      const res = await fetch('/api/ai/mood-prioritize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mood, projectId })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Mood reprioritisation failed');
+      setMoodTasks(data.tasks || []);
+    } catch (e: any) {
+      console.error(e);
+      alert(e.message || 'Mood reprioritization failed');
+    } finally {
+      setLoadingMood(false);
+    }
+  };
+
+  // Focus Blocks Suggester (AI 12)
+  const handleFetchFocusBlocks = async () => {
+    setLoadingFocus(true);
+    try {
+      const res = await fetch('/api/ai/focus-blocks');
+      const data = await res.json();
+      if (!res.ok) throw new Error('Failed to fetch focus blocks');
+      setFocusBlocks(data.blocks || []);
+      setShowFocusModal(true);
+    } catch (e) {
+      console.error(e);
+      alert('Failed to get focus block suggestions.');
+    } finally {
+      setLoadingFocus(false);
+    }
+  };
+
+  // Objective Clarity Checker (AI 10)
+  const handleObjectiveClarityCheck = async (objective: string, isTask = false) => {
+    if (isTask) setTaskObjectiveClarityWarning(null);
+    else setObjectiveClarityWarning(null);
+
+    if (!objective || objective.trim().length === 0) return;
+
+    try {
+      const res = await fetch('/api/ai/check-clarity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ objective })
+      });
+      const data = await res.json();
+      if (data.warning) {
+        if (isTask) setTaskObjectiveClarityWarning(data.warning);
+        else setObjectiveClarityWarning(data.warning);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Result vs Objective Gap Analyser (AI 11)
+  const handleResultGapCheck = async (objective: string, result: string, isTask = false) => {
+    if (isTask) setTaskGapAnalysis(null);
+    else setGapAnalysis(null);
+
+    if (!objective || !result || result.trim().length === 0) return;
+
+    try {
+      const res = await fetch('/api/ai/analyse-gap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ objective, result })
+      });
+      const data = await res.json();
+      if (data.gap) {
+        if (isTask) setTaskGapAnalysis(data.gap);
+        else setGapAnalysis(data.gap);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Smart Task Breakdown (AI 9)
+  const handleFetchSmartBreakdown = async (objective: string) => {
+    setLoadingBreakdown(true);
+    setSuggestedBreakdown([]);
+    setSelectedBreakdownTasks({});
+    try {
+      const res = await fetch('/api/ai/breakdown', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ objective })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to generate breakdown');
+      setSuggestedBreakdown(data.suggestions || []);
+      const checks: Record<number, boolean> = {};
+      (data.suggestions || []).forEach((_: any, idx: number) => {
+        checks[idx] = true;
+      });
+      setSelectedBreakdownTasks(checks);
+    } catch (e: any) {
+      console.error(e);
+      alert(e.message || 'Failed task breakdown generation.');
+    } finally {
+      setLoadingBreakdown(false);
+    }
+  };
+
+  const handleCreateSuggestedTasks = async (projectId: string) => {
+    const tasksToCreate = suggestedBreakdown.filter((_, idx) => selectedBreakdownTasks[idx]);
+    if (tasksToCreate.length === 0) {
+      alert('Please check at least one suggested task.');
+      return;
+    }
+
+    setLoadingBreakdown(true);
+    try {
+      for (const t of tasksToCreate) {
+        await fetch('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            projectId,
+            name: `${t.name} (${t.estimate})`,
+            objective: `Auto-suggested sub-task for project goal.`
+          })
+        });
+      }
+      setSuggestedBreakdown([]);
+      setSelectedBreakdownTasks({});
+      await refreshAllData();
+      alert('Suggested tasks added to project successfully!');
+    } catch (e) {
+      console.error(e);
+      alert('Failed adding suggested tasks.');
+    } finally {
+      setLoadingBreakdown(false);
+    }
+  };
+
   // Read Notifications Action
   const handleMarkNotificationsRead = async (id?: string) => {
     try {
@@ -692,50 +869,118 @@ export default function DashboardPage() {
         
         {/* AI Recommendations persisted widget on Dashboard */}
         {activeTab === 'projects' && !selectedProject && (
-          <section className="glass p-5 rounded-2xl bg-neutral-900/25 border-neutral-900 shadow-xl flex flex-col md:flex-row justify-between gap-6 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-[40%] h-[100%] bg-brand-amber/5 blur-[60px] pointer-events-none" />
-            <div className="space-y-3 max-w-xl">
-              <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-brand-amber/15 text-brand-amber text-[10px] font-bold uppercase tracking-wider">
-                <Brain className="w-3.5 h-3.5" /> AI Productivity Coach
-              </div>
-              {aiBestAction ? (
-                <div>
-                  <h3 className="text-base font-bold text-white mb-1 flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-brand-amber" />
-                    {aiBestAction.name}
-                  </h3>
-                  <p className="text-xs text-neutral-400 leading-relaxed mb-1">
-                    <span className="font-semibold text-brand-teal">Reason:</span> {aiBestAction.reason}
-                  </p>
-                  <p className="text-[11px] italic text-neutral-500">
-                    {aiBestAction.explanation}
-                  </p>
+          <div className="space-y-6">
+            <section className="glass p-5 rounded-2xl bg-neutral-900/25 border-neutral-900 shadow-xl flex flex-col md:flex-row justify-between gap-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-[40%] h-[100%] bg-brand-amber/5 blur-[60px] pointer-events-none" />
+              <div className="space-y-3 max-w-xl">
+                <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-brand-amber/15 text-brand-amber text-[10px] font-bold uppercase tracking-wider">
+                  <Brain className="w-3.5 h-3.5" /> AI Productivity Coach
                 </div>
-              ) : (
-                <p className="text-xs text-neutral-400">Loading your customized AI advice widget...</p>
-              )}
-            </div>
+                {aiBestAction ? (
+                  <div>
+                    <h3 className="text-base font-bold text-white mb-1 flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-brand-amber" />
+                      {aiBestAction.name}
+                    </h3>
+                    <p className="text-xs text-neutral-400 leading-relaxed mb-1">
+                      <span className="font-semibold text-brand-teal">Reason:</span> {aiBestAction.reason}
+                    </p>
+                    <p className="text-[11px] italic text-neutral-500">
+                      {aiBestAction.explanation}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-neutral-400">Loading your customized AI advice widget...</p>
+                )}
 
-            <div className="flex flex-col gap-2 shrink-0 md:justify-center">
-              <button 
-                onClick={fetchAiRecommendations}
-                disabled={loadingAi}
-                className="px-4 py-2 text-xs font-semibold rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-300 border border-neutral-800 transition disabled:opacity-50"
-              >
-                {loadingAi ? 'Calculating...' : 'Recalculate Focus'}
-              </button>
-              <button 
-                onClick={() => {
-                  alert(`Today's Top 3 Planned Actions:\n\n` + 
-                    aiActions.map((a, i) => `${i+1}. ${a.name} (${a.estimate})\n   Reason: ${a.reason}`).join('\n\n')
-                  );
-                }}
-                className="px-4 py-2 text-xs font-semibold rounded-lg bg-gradient-to-r from-brand-amber to-brand-coral text-white transition hover:opacity-95"
-              >
-                Show Today's Top 3
-              </button>
-            </div>
-          </section>
+                {/* Mood Selector Widget (AI 14) */}
+                <div className="pt-3 border-t border-neutral-900/60">
+                  <span className="text-[10px] font-bold uppercase text-neutral-400 tracking-wider block mb-2">Select Your Energy Level Today</span>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {['high', 'medium', 'low', 'creative', 'analytical'].map((m) => (
+                      <button
+                        key={m}
+                        onClick={() => handleMoodReprioritize(m)}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider transition ${
+                          selectedMood === m 
+                            ? 'bg-brand-amber text-black' 
+                            : 'bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800'
+                        }`}
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 shrink-0 md:justify-center">
+                <button 
+                  onClick={fetchAiRecommendations}
+                  disabled={loadingAi}
+                  className="px-4 py-2 text-xs font-semibold rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-300 border border-neutral-800 transition disabled:opacity-50"
+                >
+                  {loadingAi ? 'Calculating...' : 'Recalculate Focus'}
+                </button>
+                <button 
+                  onClick={() => {
+                    alert(`Today's Top 3 Planned Actions:\n\n` + 
+                      aiActions.map((a, i) => `${i+1}. ${a.name} (${a.estimate})\n   Reason: ${a.reason}`).join('\n\n')
+                    );
+                  }}
+                  className="px-4 py-2 text-xs font-semibold rounded-lg bg-gradient-to-r from-brand-amber to-brand-coral text-white transition hover:opacity-95"
+                >
+                  Show Today's Top 3
+                </button>
+                {/* Focus Block Suggester (AI 12) */}
+                <button 
+                  onClick={handleFetchFocusBlocks}
+                  disabled={loadingFocus}
+                  className="px-4 py-2 text-xs font-semibold rounded-lg bg-brand-teal/10 hover:bg-brand-teal/20 text-brand-teal border border-brand-teal/20 transition disabled:opacity-50 text-left"
+                >
+                  {loadingFocus ? 'Generating schedule...' : 'Suggest Daily Schedule'}
+                </button>
+              </div>
+            </section>
+
+            {/* Energy-Aligned Agenda Display */}
+            {selectedMood && (
+              <div className="glass p-5 rounded-2xl bg-neutral-900/15 border-neutral-900/50 space-y-3 animate-slide-up">
+                <div className="flex justify-between items-center border-b border-neutral-900 pb-2">
+                  <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-brand-amber animate-spin" />
+                    Today's Energy-Aligned Agenda ({selectedMood.toUpperCase()})
+                  </h4>
+                  <button onClick={() => { setSelectedMood(''); setMoodTasks([]); }} className="text-xs text-neutral-500 hover:text-white">
+                    Clear Agenda
+                  </button>
+                </div>
+                
+                {loadingMood ? (
+                  <p className="text-xs text-neutral-500 py-2">Consulting coach model...</p>
+                ) : moodTasks.length === 0 ? (
+                  <p className="text-xs text-neutral-500 py-2">No pending tasks found. All clear!</p>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-[11px] text-neutral-400 italic">
+                      Coach advice: optimized sequence based on {selectedMood} energy level.
+                    </p>
+                    {moodTasks.map((t, idx) => (
+                      <div key={t.id} className="p-3 bg-neutral-950 rounded-lg border border-neutral-900 flex justify-between items-center text-xs">
+                        <div className="space-y-0.5">
+                          <span className="font-semibold text-white block">{idx + 1}. {t.name}</span>
+                          {t.priority && (
+                            <span className="text-[9px] uppercase tracking-wider text-neutral-500 font-bold">Priority: {t.priority}</span>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-brand-teal font-semibold">Ready</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         )}
 
         {/* Dynamic routing of views based on active bottom tab */}
@@ -770,13 +1015,30 @@ export default function DashboardPage() {
                     >
                       <div className="space-y-2">
                         <div className="flex justify-between items-start">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                            project.status === 'done' ? 'bg-emerald-950 text-emerald-400 border border-emerald-900' :
-                            project.status === 'in progress' ? 'bg-brand-purple/20 text-brand-purple-light border border-brand-purple/30' :
-                            'bg-neutral-800 text-neutral-400 border border-neutral-700'
-                          }`}>
-                            {project.status}
-                          </span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                              project.status === 'done' ? 'bg-emerald-950 text-emerald-400 border border-emerald-900' :
+                              project.status === 'in progress' ? 'bg-brand-purple/20 text-brand-purple-light border border-brand-purple/30' :
+                              'bg-neutral-800 text-neutral-400 border border-neutral-700'
+                            }`}>
+                              {project.status}
+                            </span>
+                            {(project as any).healthScore !== undefined && (
+                              <span
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  alert(`${project.name} Health Details:\n\n${(project as any).healthDetails}`);
+                                }}
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold border transition hover:opacity-85 cursor-help ${
+                                  (project as any).healthScore >= 70 ? 'bg-emerald-950/40 text-emerald-400 border-emerald-950' :
+                                  (project as any).healthScore >= 40 ? 'bg-amber-950/40 text-brand-amber border-amber-950' :
+                                  'bg-red-950/40 text-red-400 border-red-950'
+                                }`}
+                              >
+                                Health: {(project as any).healthScore}%
+                              </span>
+                            )}
+                          </div>
                           {project.deadline && (
                             <span className="text-[10px] text-neutral-500 flex items-center gap-1">
                               <CalendarIcon className="w-3 h-3" />
@@ -862,10 +1124,18 @@ export default function DashboardPage() {
                     </label>
                     <textarea
                       defaultValue={selectedProject.objective}
-                      onBlur={(e) => handleSaveReflections('project', selectedProject.id, { objective: e.target.value })}
+                      onBlur={(e) => {
+                        handleSaveReflections('project', selectedProject.id, { objective: e.target.value });
+                        handleObjectiveClarityCheck(e.target.value, false);
+                      }}
                       placeholder="Add target project goal..."
                       className="w-full text-xs bg-transparent border-0 resize-none focus:ring-0 outline-none text-neutral-300 h-16 leading-relaxed"
                     />
+                    {objectiveClarityWarning && (
+                      <span className="text-[10px] text-brand-amber font-semibold block pt-1 leading-normal border-t border-neutral-900">
+                        ⚠️ Objective Nudge: {objectiveClarityWarning}
+                      </span>
+                    )}
                   </div>
 
                   {/* Result */}
@@ -875,10 +1145,18 @@ export default function DashboardPage() {
                     </label>
                     <textarea
                       defaultValue={selectedProject.result}
-                      onBlur={(e) => handleSaveReflections('project', selectedProject.id, { result: e.target.value })}
+                      onBlur={(e) => {
+                        handleSaveReflections('project', selectedProject.id, { result: e.target.value });
+                        handleResultGapCheck(selectedProject.objective, e.target.value, false);
+                      }}
                       placeholder="Log final project outcome..."
                       className="w-full text-xs bg-transparent border-0 resize-none focus:ring-0 outline-none text-neutral-300 h-16 leading-relaxed"
                     />
+                    {gapAnalysis && (
+                      <span className="text-[10px] text-emerald-400 font-semibold block pt-1 leading-normal border-t border-neutral-900">
+                        💡 Gap Analysis: {gapAnalysis}
+                      </span>
+                    )}
                   </div>
 
                   {/* Lesson */}
@@ -920,13 +1198,65 @@ export default function DashboardPage() {
                 <div className="border-t border-neutral-900 pt-6 space-y-4">
                   <div className="flex justify-between items-center">
                     <h3 className="font-bold text-base text-white">Project Tasks</h3>
-                    <button
-                      onClick={() => setModalType('new-task')}
-                      className="px-3 py-1.5 rounded-lg border border-neutral-800 hover:bg-neutral-900 text-xs font-semibold text-neutral-300 flex items-center gap-1 transition"
-                    >
-                      <Plus className="w-3.5 h-3.5" /> Add Task
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleFetchSmartBreakdown(selectedProject.objective || selectedProject.name)}
+                        disabled={loadingBreakdown}
+                        className="px-3 py-1.5 rounded-lg border border-brand-teal/20 bg-brand-teal/5 hover:bg-brand-teal/10 text-xs font-semibold text-brand-teal flex items-center gap-1.5 transition disabled:opacity-50"
+                      >
+                        <Brain className="w-3.5 h-3.5" /> {loadingBreakdown ? 'Breaking down...' : 'AI Suggest Tasks'}
+                      </button>
+                      <button
+                        onClick={() => setModalType('new-task')}
+                        className="px-3 py-1.5 rounded-lg border border-neutral-800 hover:bg-neutral-900 text-xs font-semibold text-neutral-300 flex items-center gap-1 transition"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Add Task
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Suggested Tasks Panel (AI 9) */}
+                  {suggestedBreakdown.length > 0 && (
+                    <div className="p-5 rounded-2xl border border-brand-teal/20 bg-brand-teal/5 space-y-4 animate-slide-up">
+                      <div className="flex justify-between items-center border-b border-brand-teal/10 pb-2">
+                        <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                          <Sparkles className="w-4 h-4 text-brand-teal" /> AI Task Suggestions
+                        </span>
+                        <button 
+                          onClick={() => setSuggestedBreakdown([])} 
+                          className="text-xs text-neutral-500 hover:text-white"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        {suggestedBreakdown.map((item, idx) => (
+                          <div key={idx} className="flex items-center justify-between text-xs p-2.5 bg-neutral-950/40 rounded-xl border border-neutral-900">
+                            <label className="flex items-center gap-2 cursor-pointer text-neutral-300 font-medium">
+                              <input 
+                                type="checkbox" 
+                                checked={!!selectedBreakdownTasks[idx]}
+                                onChange={(e) => setSelectedBreakdownTasks({ ...selectedBreakdownTasks, [idx]: e.target.checked })}
+                                className="rounded border-neutral-850 bg-neutral-900 text-brand-teal focus:ring-brand-teal w-4 h-4"
+                              />
+                              {item.name}
+                            </label>
+                            <span className="text-[10px] text-neutral-500 bg-neutral-900 px-2 py-0.5 rounded-full border border-neutral-800">
+                              Est: {item.estimate}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <button
+                        onClick={() => handleCreateSuggestedTasks(selectedProject.id)}
+                        className="w-full py-2 bg-brand-teal text-black font-extrabold text-xs rounded-xl hover:opacity-95 transition"
+                      >
+                        Create Selected Tasks ({Object.values(selectedBreakdownTasks).filter(Boolean).length})
+                      </button>
+                    </div>
+                  )}
 
                   {/* Tasks Table/List */}
                   <div className="space-y-2">
@@ -1019,10 +1349,18 @@ export default function DashboardPage() {
                         <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest block">Objective</span>
                         <textarea
                           defaultValue={selectedTask.objective}
-                          onBlur={(e) => handleSaveReflections('task', selectedTask.id, { objective: e.target.value })}
+                          onBlur={(e) => {
+                            handleSaveReflections('task', selectedTask.id, { objective: e.target.value });
+                            handleObjectiveClarityCheck(e.target.value, true);
+                          }}
                           placeholder="Log task target..."
                           className="w-full bg-transparent border-0 outline-none resize-none focus:ring-0 text-neutral-200 h-12"
                         />
+                        {taskObjectiveClarityWarning && (
+                          <span className="text-[9px] text-brand-amber font-semibold block pt-1 border-t border-neutral-900 leading-normal">
+                            ⚠️ Clarity: {taskObjectiveClarityWarning}
+                          </span>
+                        )}
                       </div>
 
                       {/* Task result */}
@@ -1030,10 +1368,18 @@ export default function DashboardPage() {
                         <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest block">Result</span>
                         <textarea
                           defaultValue={selectedTask.result}
-                          onBlur={(e) => handleSaveReflections('task', selectedTask.id, { result: e.target.value })}
+                          onBlur={(e) => {
+                            handleSaveReflections('task', selectedTask.id, { result: e.target.value });
+                            handleResultGapCheck(selectedTask.objective, e.target.value, true);
+                          }}
                           placeholder="Log completed result..."
                           className="w-full bg-transparent border-0 outline-none resize-none focus:ring-0 text-neutral-200 h-12"
                         />
+                        {taskGapAnalysis && (
+                          <span className="text-[9px] text-emerald-400 font-semibold block pt-1 border-t border-neutral-900 leading-normal">
+                            💡 Gap: {taskGapAnalysis}
+                          </span>
+                        )}
                       </div>
 
                       {/* Task lesson */}
@@ -1629,96 +1975,170 @@ export default function DashboardPage() {
       {showProfile && user && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end" onClick={() => setShowProfile(false)}>
           <div 
-            className="w-full max-w-md h-full bg-neutral-900 border-l border-neutral-800 p-6 flex flex-col justify-between text-left"
+            className="w-full max-w-md h-full bg-neutral-900 border-l border-neutral-800 p-6 flex flex-col gap-6 text-left overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="space-y-6 overflow-y-auto">
-              <div className="flex justify-between items-center border-b border-neutral-800 pb-3">
-                <h3 className="font-extrabold text-lg text-white flex items-center gap-1.5">
-                  <Settings className="w-5 h-5 text-brand-teal" /> Profile & Settings
-                </h3>
-                <button onClick={() => setShowProfile(false)} className="p-1 text-neutral-400 hover:text-white rounded hover:bg-neutral-800">
-                  <X className="w-5 h-5" />
-                </button>
+            <div className="flex justify-between items-center border-b border-neutral-800 pb-3 flex-shrink-0">
+              <h3 className="font-extrabold text-lg text-white flex items-center gap-1.5">
+                <Settings className="w-5 h-5 text-brand-teal" /> Profile & Settings
+              </h3>
+              <button onClick={() => setShowProfile(false)} className="p-1 text-neutral-400 hover:text-white rounded hover:bg-neutral-800">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* User details */}
+            <div className="space-y-4 flex-shrink-0">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">Full Name</label>
+                <input
+                  type="text"
+                  defaultValue={user.name}
+                  id="profile-name"
+                  placeholder="Enter name"
+                  className="w-full px-3 py-2 rounded bg-neutral-950 border border-neutral-800 text-xs focus:border-brand-teal outline-none"
+                />
               </div>
 
-              {/* User details */}
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">Full Name</label>
-                  <input
-                    type="text"
-                    defaultValue={user.name}
-                    id="profile-name"
-                    placeholder="Enter name"
-                    className="w-full px-3 py-2 rounded bg-neutral-950 border border-neutral-800 text-xs focus:border-brand-teal outline-none"
-                  />
-                </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">Email Address</label>
+                <input
+                  type="email"
+                  defaultValue={user.email}
+                  id="profile-email"
+                  placeholder="Enter email"
+                  className="w-full px-3 py-2 rounded bg-neutral-950 border border-neutral-800 text-xs focus:border-brand-teal outline-none"
+                />
+              </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">Email Address</label>
-                  <input
-                    type="email"
-                    defaultValue={user.email}
-                    id="profile-email"
-                    placeholder="Enter email"
-                    className="w-full px-3 py-2 rounded bg-neutral-950 border border-neutral-800 text-xs focus:border-brand-teal outline-none"
-                  />
-                </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">Reminder Window</label>
+                <select
+                  defaultValue={user.reminderTiming}
+                  id="profile-reminder"
+                  className="w-full px-3 py-2 rounded bg-neutral-950 border border-neutral-800 text-xs focus:border-brand-teal outline-none text-white"
+                >
+                  <option value={1}>1 Day before deadline</option>
+                  <option value={2}>2 Days before deadline (Default)</option>
+                  <option value={3}>3 Days before deadline</option>
+                  <option value={5}>5 Days before deadline</option>
+                </select>
+              </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">Reminder Window</label>
-                  <select
-                    defaultValue={user.reminderTiming}
-                    id="profile-reminder"
-                    className="w-full px-3 py-2 rounded bg-neutral-950 border border-neutral-800 text-xs focus:border-brand-teal outline-none text-white"
-                  >
-                    <option value={1}>1 Day before deadline</option>
-                    <option value={2}>2 Days before deadline (Default)</option>
-                    <option value={3}>3 Days before deadline</option>
-                    <option value={5}>5 Days before deadline</option>
-                  </select>
+              {/* Theme toggle layout class */}
+              <div className="space-y-1.5 flex justify-between items-center p-3 rounded-xl bg-neutral-950 border border-neutral-850">
+                <div>
+                  <label className="text-xs font-bold text-white block">Theme Mode</label>
+                  <span className="text-[10px] text-neutral-500">Toggle between Light and Dark interface</span>
                 </div>
-
-                {/* Theme toggle layout class */}
-                <div className="space-y-1.5 flex justify-between items-center p-3 rounded-xl bg-neutral-950 border border-neutral-850">
-                  <div>
-                    <label className="text-xs font-bold text-white block">Theme Mode</label>
-                    <span className="text-[10px] text-neutral-500">Toggle between Light and Dark interface</span>
-                  </div>
-                  <button
-                    onClick={() => {
-                      const nextTheme = user.theme === 'dark' ? 'light' : 'dark';
-                      handleUpdateProfile({
-                        name: (document.getElementById('profile-name') as HTMLInputElement).value,
-                        email: (document.getElementById('profile-email') as HTMLInputElement).value,
-                        theme: nextTheme,
-                        reminderTiming: parseInt((document.getElementById('profile-reminder') as HTMLSelectElement).value, 10),
-                      });
-                    }}
-                    className="p-2 border border-neutral-800 rounded bg-neutral-900 text-brand-teal hover:text-white transition"
-                  >
-                    {user.theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                  </button>
-                </div>
-
                 <button
                   onClick={() => {
+                    const nextTheme = user.theme === 'dark' ? 'light' : 'dark';
                     handleUpdateProfile({
                       name: (document.getElementById('profile-name') as HTMLInputElement).value,
                       email: (document.getElementById('profile-email') as HTMLInputElement).value,
-                      theme: user.theme,
+                      theme: nextTheme,
                       reminderTiming: parseInt((document.getElementById('profile-reminder') as HTMLSelectElement).value, 10),
                     });
                   }}
-                  className="w-full py-2.5 rounded-lg bg-gradient-to-r from-brand-teal to-brand-teal-dark text-white font-semibold text-xs hover:opacity-95 transition"
+                  className="p-2 border border-neutral-800 rounded bg-neutral-900 text-brand-teal hover:text-white transition"
                 >
-                  Save Settings
+                  {user.theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                 </button>
               </div>
+
+              <button
+                onClick={() => {
+                  handleUpdateProfile({
+                    name: (document.getElementById('profile-name') as HTMLInputElement).value,
+                    email: (document.getElementById('profile-email') as HTMLInputElement).value,
+                    theme: user.theme,
+                    reminderTiming: parseInt((document.getElementById('profile-reminder') as HTMLSelectElement).value, 10),
+                  });
+                }}
+                className="w-full py-2.5 rounded-lg bg-gradient-to-r from-brand-teal to-brand-teal-dark text-white font-semibold text-xs hover:opacity-95 transition"
+              >
+                Save Settings
+              </button>
             </div>
 
-            <div className="border-t border-neutral-800 pt-4">
+            {/* Monthly Reports (AI 16) */}
+            <div className="space-y-3 flex-shrink-0">
+              <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
+                <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-brand-amber" /> Monthly Reports
+                </span>
+                <button
+                  onClick={handleGenerateMonthlyReport}
+                  disabled={generatingReport}
+                  className="px-3 py-1 rounded-lg bg-brand-amber/10 border border-brand-amber/20 text-brand-amber text-[10px] font-bold uppercase tracking-wider hover:bg-brand-amber/20 transition disabled:opacity-50"
+                >
+                  {generatingReport ? 'Generating...' : '+ Generate'}
+                </button>
+              </div>
+
+              {monthlyReports.length === 0 ? (
+                <p className="text-[11px] text-neutral-500 italic py-1">
+                  No monthly reports yet. Generate your first AI-powered productivity retrospective!
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                  {monthlyReports.map((report: any) => (
+                    <div key={report.id} className="p-3 bg-neutral-950 rounded-xl border border-neutral-800 space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-brand-amber">
+                          {report.month ? new Date(report.month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Monthly Report'}
+                        </span>
+                        <span className="text-[10px] text-neutral-500">
+                          {new Date(report.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-neutral-300 leading-relaxed line-clamp-3">{report.summary}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Weekly Debriefs Log */}
+            <div className="space-y-3 flex-shrink-0">
+              <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
+                <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <Brain className="w-4 h-4 text-brand-purple" /> Weekly Debriefs
+                </span>
+                <button
+                  onClick={handleGenerateDebrief}
+                  disabled={generatingDebrief}
+                  className="px-3 py-1 rounded-lg bg-brand-purple/10 border border-brand-purple/20 text-brand-purple-light text-[10px] font-bold uppercase tracking-wider hover:bg-brand-purple/20 transition disabled:opacity-50"
+                >
+                  {generatingDebrief ? 'Generating...' : '+ Generate'}
+                </button>
+              </div>
+
+              {debriefs.length === 0 ? (
+                <p className="text-[11px] text-neutral-500 italic py-1">
+                  No debriefs yet. Generate your Sunday retrospective when ready.
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                  {debriefs.map((debrief: any) => (
+                    <div key={debrief.id} className="p-3 bg-neutral-950 rounded-xl border border-neutral-800 space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-brand-purple-light">
+                          Week of {debrief.weekStart ? new Date(debrief.weekStart).toLocaleDateString() : '—'}
+                        </span>
+                        <span className="text-[10px] text-neutral-500">
+                          {new Date(debrief.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-neutral-300 leading-relaxed line-clamp-3">{debrief.summary}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-neutral-800 pt-4 flex-shrink-0">
               <button
                 onClick={handleLogout}
                 className="w-full py-2.5 rounded-lg border border-red-950 hover:bg-red-950/20 text-red-400 font-semibold text-xs flex items-center justify-center gap-1.5 transition"
@@ -1726,6 +2146,69 @@ export default function DashboardPage() {
                 <LogOut className="w-4 h-4" /> Sign Out
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* FOCUS BLOCK MODAL (AI 12) */}
+      {/* ======================================================== */}
+      {showFocusModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowFocusModal(false)}>
+          <div
+            className="w-full max-w-lg bg-neutral-900 border border-neutral-800 rounded-2xl p-6 space-y-5 shadow-2xl max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-neutral-800 pb-4">
+              <div>
+                <h3 className="font-extrabold text-lg text-white flex items-center gap-2">
+                  <Brain className="w-5 h-5 text-brand-teal" /> Daily Focus Schedule
+                </h3>
+                <p className="text-[11px] text-neutral-400 mt-0.5">AI-generated time blocks based on your tasks & habits</p>
+              </div>
+              <button onClick={() => setShowFocusModal(false)} className="p-1.5 text-neutral-500 hover:text-white rounded-lg hover:bg-neutral-800 transition">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {focusBlocks.length === 0 ? (
+              <p className="text-xs text-neutral-500 py-6 text-center italic">No schedule blocks generated yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {focusBlocks.map((block: any, idx: number) => (
+                  <div key={idx} className="flex gap-4 p-4 bg-neutral-950 rounded-xl border border-neutral-800 group hover:border-brand-teal/30 transition">
+                    <div className="text-right shrink-0 w-20">
+                      <span className="text-xs font-bold text-brand-teal block">{block.time}</span>
+                      {block.duration && (
+                        <span className="text-[10px] text-neutral-500">{block.duration}</span>
+                      )}
+                    </div>
+                    <div className="flex-grow space-y-1">
+                      <span className="text-xs font-bold text-white block">{block.task}</span>
+                      {block.note && (
+                        <span className="text-[11px] text-neutral-400 italic block">{block.note}</span>
+                      )}
+                      {block.type && (
+                        <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border inline-block ${
+                          block.type === 'deep' ? 'bg-brand-purple/10 text-brand-purple-light border-brand-purple/20' :
+                          block.type === 'break' ? 'bg-emerald-950/40 text-emerald-400 border-emerald-900' :
+                          'bg-brand-teal/10 text-brand-teal border-brand-teal/20'
+                        }`}>
+                          {block.type}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowFocusModal(false)}
+              className="w-full py-2.5 bg-brand-teal text-black font-extrabold text-xs rounded-xl hover:opacity-95 transition"
+            >
+              Got it, let's focus!
+            </button>
           </div>
         </div>
       )}
