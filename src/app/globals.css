@@ -331,6 +331,50 @@
 }
 
 /* ============================================================
+   🌊 OCEAN THEME
+   Deep sea blues, bioluminescent cyan and teal, aquatic depth.
+   ============================================================ */
+[data-theme="ocean"] {
+  --bg-base: #020813;
+  --bg-subtle: #051429;
+  --surface: #0a1f3d;
+  --surface-elevated: #102a52;
+  --border: #1e3a63;
+  --border-subtle: #122847;
+  --text-primary: #e0f2fe;
+  --text-secondary: #7dd3fc;
+  --text-muted: #1e5a8f;
+  --primary: #0ea5e9;
+  --primary-fg: #ffffff;
+  --secondary: #14b8a6;
+  --accent: #2dd4bf;
+  --hover-bg: #102a52;
+  --active-bg: #1e3a63;
+  --focus-ring: #0ea5e9;
+  --disabled-bg: #102a52;
+  --disabled-text: #2c5282;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --info: #3b82f6;
+  --shadow-sm: 0 1px 4px rgba(2,8,19,0.7), 0 0 6px rgba(14,165,233,0.05);
+  --shadow-md: 0 4px 16px rgba(2,8,19,0.8), 0 0 20px rgba(14,165,233,0.08);
+  --shadow-lg: 0 8px 40px rgba(2,8,19,0.9), 0 0 40px rgba(14,165,233,0.1);
+  --overlay: rgba(2,8,19,0.85);
+  --scrollbar-thumb: rgba(14,165,233,0.3);
+  --selection-bg: #0284c7;
+  --selection-text: #e0f2fe;
+  --glass-bg: rgba(10,31,61,0.7);
+  --glass-border: rgba(14,165,233,0.15);
+  --chart-1: #0ea5e9;
+  --chart-2: #14b8a6;
+  --chart-3: #2dd4bf;
+  --chart-4: #38bdf8;
+  --chart-5: #60a5fa;
+  --chart-6: #818cf8;
+}
+
+/* ============================================================
    🤠 WILD WEST THEME
    Leather browns, desert beige, burnt orange, antique gold.
    ============================================================ */

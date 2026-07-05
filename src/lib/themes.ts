@@ -93,6 +93,12 @@ export const THEMES: ThemeDefinition[] = [
     swatches: ['#fdf6e3', '#0891b2', '#f97316'],
   },
   {
+    id: 'ocean',
+    name: 'Ocean',
+    emoji: '🌊',
+    swatches: ['#020813', '#0ea5e9', '#14b8a6'],
+  },
+  {
     id: 'wild-west',
     name: 'Wild West',
     emoji: '🤠',
