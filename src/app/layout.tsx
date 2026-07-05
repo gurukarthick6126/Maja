@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Taskflow — Plan. Reflect. Improve.",
+  title: "Atlas — Plan. Reflect. Improve.",
   description: "A reflective project and task management web application.",
 };
 

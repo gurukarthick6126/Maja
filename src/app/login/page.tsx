@@ -74,10 +74,10 @@ function LoginContent() {
         <div className="flex flex-col items-center mb-8">
           <Link href="/" className="flex items-center gap-2 mb-2 group">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-purple to-brand-teal flex items-center justify-center font-bold text-white shadow-lg shadow-purple-500/20 group-hover:scale-105 transition">
-              T
+              A
             </div>
             <span className="font-bold text-2xl tracking-tight text-white">
-              Taskflow
+              Atlas
             </span>
           </Link>
           <p className="text-neutral-400 text-sm">
@@ -199,7 +199,7 @@ function LoginContent() {
               </>
             ) : (
               <>
-                New to Taskflow?{' '}
+                New to Atlas?{' '}
                 <button
                   onClick={() => {
                     setIsSignUp(true);

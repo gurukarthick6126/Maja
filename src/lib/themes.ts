@@ -1,5 +1,5 @@
 /**
- * Taskflow Multi-Theme System
+ * Atlas Multi-Theme System
  * ===========================
  * Centralized theme registry. Each theme is identified by an `id` that maps
  * 1:1 with a CSS selector `[data-theme="<id>"]` in globals.css.
@@ -149,7 +149,7 @@ export function getInitialTheme(): string {
  */
 export function applyTheme(themeId: string): void {
   if (!THEMES.some((t) => t.id === themeId)) {
-    console.warn(`[Taskflow Themes] Unknown theme "${themeId}", falling back to "${DEFAULT_THEME}"`);
+    console.warn(`[Atlas Themes] Unknown theme "${themeId}", falling back to "${DEFAULT_THEME}"`);
     themeId = DEFAULT_THEME;
   }
   document.documentElement.setAttribute('data-theme', themeId);

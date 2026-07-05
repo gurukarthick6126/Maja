@@ -1,8 +1,8 @@
-# Taskflow Theme System — Developer Guide
+# Atlas Theme System — Developer Guide
 
 ## Architecture Overview
 
-Taskflow uses a **CSS custom properties (CSS variables)** approach to theming. A single `data-theme` attribute on `<html>` controls every component's appearance through a cascade of CSS variable overrides.
+Atlas uses a **CSS custom properties (CSS variables)** approach to theming. A single `data-theme` attribute on `<html>` controls every component's appearance through a cascade of CSS variable overrides.
 
 ```
 localStorage("theme") → data-theme="galaxy" on <html>

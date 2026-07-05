@@ -22,7 +22,7 @@ async function main() {
   const user = await db.user.create({
     data: {
       name: 'John Doe',
-      email: 'test@taskflow.com',
+      email: 'test@atlas.com',
       passwordHash,
       theme: 'dark',
       reminderTiming: 2,
@@ -34,10 +34,10 @@ async function main() {
   // Create Projects
   const project1 = await db.project.create({
     data: {
-      name: 'Launch Taskflow MVP',
+      name: 'Launch Atlas MVP',
       status: 'in progress',
       deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days from now
-      objective: 'Build a working version of Taskflow with AI and reflections',
+      objective: 'Build a working version of Atlas with AI and reflections',
       result: 'Main layouts and database schemas configured.',
       lesson: 'Setting up Prisma early saves database modeling headaches.',
       compromise: 'Deferred native mobile push notification service; using client service worker instead.',
@@ -209,7 +209,7 @@ async function main() {
       deadlinesHit: 3,
       deadlinesMissed: 1,
       topLesson: 'Planning the exact hours of tasks prevents overflow.',
-      topResult: 'Completed database sync for Taskflow ahead of schedule.',
+      topResult: 'Completed database sync for Atlas ahead of schedule.',
       summary: 'A very successful week focused on building the core structural foundation. Habits remained stable, and the project plan is moving quickly.',
       userId: user.id,
     },

@@ -1,4 +1,4 @@
-// Dual-mode AI Engine for Taskflow — powered by Google Gemini 2.0 Flash
+// Dual-mode AI Engine for Atlas — powered by Google Gemini 2.0 Flash
 
 import { GoogleGenAI } from '@google/genai';
 

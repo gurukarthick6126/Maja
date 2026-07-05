@@ -819,7 +819,7 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center text-white">
         <Sparkles className="w-12 h-12 text-brand-purple animate-pulse mb-4" />
-        <p className="text-sm font-semibold tracking-wider uppercase text-neutral-400">Loading Taskflow...</p>
+        <p className="text-sm font-semibold tracking-wider uppercase text-neutral-400">Loading Atlas...</p>
       </div>
     );
   }
@@ -846,10 +846,10 @@ export default function DashboardPage() {
         {/* Brand */}
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => { setSelectedProject(null); setSelectedHabit(null); setSelectedScheduled(null); }}>
           <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-brand-purple to-brand-teal flex items-center justify-center font-bold text-white shadow-md shadow-purple-500/20">
-            T
+            A
           </div>
           <span className="font-bold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-neutral-50 to-neutral-200">
-            Taskflow
+            Atlas
           </span>
         </div>
 
@@ -858,7 +858,7 @@ export default function DashboardPage() {
           <button 
             onClick={() => setShowAbout(true)} 
             className="p-2 text-neutral-400 hover:text-white rounded-lg hover:bg-neutral-900 transition"
-            title="About Taskflow"
+            title="About Atlas"
           >
             <Info className="w-5 h-5" />
           </button>
@@ -2278,7 +2278,7 @@ export default function DashboardPage() {
             <div className="space-y-6 overflow-y-auto flex-grow">
               <div className="flex justify-between items-center border-b border-neutral-800 pb-3">
                 <h3 className="font-extrabold text-lg text-white flex items-center gap-1.5">
-                  <Info className="w-5 h-5 text-brand-purple" /> About Taskflow
+                  <Info className="w-5 h-5 text-brand-purple" /> About Atlas
                 </h3>
                 <button onClick={() => setShowAbout(false)} className="p-1 text-neutral-400 hover:text-white rounded hover:bg-neutral-800">
                   <X className="w-5 h-5" />
@@ -2290,7 +2290,7 @@ export default function DashboardPage() {
                 <div>
                   <h4 className="font-bold text-white mb-1">Plan. Reflect. Improve.</h4>
                   <p>
-                    Taskflow utilizes a unique reflection layer to record not just what you plan, but what happened. Reflecting on lessons and compromises turns action trackers into long-term growth tools.
+                    Atlas utilizes a unique reflection layer to record not just what you plan, but what happened. Reflecting on lessons and compromises turns action trackers into long-term growth tools.
                   </p>
                 </div>
 
@@ -2382,7 +2382,7 @@ export default function DashboardPage() {
             </div>
             
             <div className="text-[10px] text-neutral-500 border-t border-neutral-800 pt-4 text-center">
-              Taskflow App Sandbox • Version 1.0.0 • Plan. Reflect. Improve.
+              Atlas App Sandbox • Version 1.0.0 • Plan. Reflect. Improve.
             </div>
           </div>
         </AnimatedModal>

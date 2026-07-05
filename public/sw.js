@@ -1,13 +1,13 @@
-// Taskflow Service Worker to handle browser notifications and deep-linking focus
+// Atlas Service Worker to handle browser notifications and deep-linking focus
 
 self.addEventListener('push', function(event) {
-  let data = { title: 'Taskflow Alert', body: 'You have an upcoming deadline!' };
+  let data = { title: 'Atlas Alert', body: 'You have an upcoming deadline!' };
   
   if (event.data) {
     try {
       data = event.data.json();
     } catch (e) {
-      data = { title: 'Taskflow Alert', body: event.data.text() };
+      data = { title: 'Atlas Alert', body: event.data.text() };
     }
   }
 
