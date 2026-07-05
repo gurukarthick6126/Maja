@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatedModal } from '@/components/AnimatedModal';
+import { THEMES, applyTheme } from '@/lib/themes';
 import { 
   Bell, User, Info, Folder, RotateCcw, Calendar as CalendarIcon, Clock, Plus, Trash2, 
   Edit, Brain, Check, X, ChevronLeft, ChevronRight, Sparkles, Sun, Moon, LogOut, 
@@ -2014,7 +2015,7 @@ export default function DashboardPage() {
                 <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">Full Name</label>
                 <input
                   type="text"
-                  defaultValue={user.name}
+                  defaultValue={user?.name || ''}
                   id="profile-name"
                   placeholder="Enter name"
                   className="w-full px-3 py-2 rounded bg-neutral-950 border border-neutral-800 text-xs focus:border-brand-teal outline-none"
@@ -2025,7 +2026,7 @@ export default function DashboardPage() {
                 <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">Email Address</label>
                 <input
                   type="email"
-                  defaultValue={user.email}
+                  defaultValue={user?.email || ''}
                   id="profile-email"
                   placeholder="Enter email"
                   className="w-full px-3 py-2 rounded bg-neutral-950 border border-neutral-800 text-xs focus:border-brand-teal outline-none"
@@ -2035,7 +2036,7 @@ export default function DashboardPage() {
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">Reminder Window</label>
                 <select
-                  defaultValue={user.reminderTiming}
+                  defaultValue={user?.reminderTiming || 2}
                   id="profile-reminder"
                   className="w-full px-3 py-2 rounded bg-neutral-950 border border-neutral-800 text-xs focus:border-brand-teal outline-none text-white"
                 >
@@ -2046,26 +2047,43 @@ export default function DashboardPage() {
                 </select>
               </div>
 
-              {/* Theme toggle layout class */}
-              <div className="space-y-1.5 flex justify-between items-center p-3 rounded-xl bg-neutral-950 border border-neutral-850">
+              {/* Theme Selector */}
+              <div className="space-y-2 pt-2 border-t border-neutral-800">
                 <div>
-                  <label className="text-xs font-bold text-white block">Theme Mode</label>
-                  <span className="text-[10px] text-neutral-500">Toggle between Light and Dark interface</span>
+                  <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">App Theme</label>
+                  <span className="text-[9px] text-neutral-500 mb-2 block">Select your preferred visual style</span>
                 </div>
-                <button
-                  onClick={() => {
-                    const nextTheme = user.theme === 'dark' ? 'light' : 'dark';
-                    handleUpdateProfile({
-                      name: (document.getElementById('profile-name') as HTMLInputElement).value,
-                      email: (document.getElementById('profile-email') as HTMLInputElement).value,
-                      theme: nextTheme,
-                      reminderTiming: parseInt((document.getElementById('profile-reminder') as HTMLSelectElement).value, 10),
-                    });
-                  }}
-                  className="p-2 border border-neutral-800 rounded bg-neutral-900 text-brand-teal hover:text-white transition"
-                >
-                  {user.theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  {THEMES.map(themeOption => (
+                    <button
+                      key={themeOption.id}
+                      onClick={() => {
+                        applyTheme(themeOption.id);
+                        handleUpdateProfile({
+                          name: (document.getElementById('profile-name') as HTMLInputElement).value,
+                          email: (document.getElementById('profile-email') as HTMLInputElement).value,
+                          theme: themeOption.id,
+                          reminderTiming: parseInt((document.getElementById('profile-reminder') as HTMLSelectElement).value, 10),
+                        });
+                      }}
+                      className={`p-2 border rounded-lg text-left transition flex flex-col gap-1.5 ${
+                        user?.theme === themeOption.id 
+                          ? 'bg-brand-purple/20 border-brand-purple text-white' 
+                          : 'bg-neutral-950 border-neutral-800 text-neutral-400 hover:border-neutral-600 hover:text-white'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="text-xs font-bold">{themeOption.emoji} {themeOption.name}</span>
+                        {user?.theme === themeOption.id && <Check className="w-3 h-3 text-brand-purple" />}
+                      </div>
+                      <div className="flex gap-1">
+                        {themeOption.swatches.map((swatch, i) => (
+                          <div key={i} className="w-3 h-3 rounded-full border border-neutral-800" style={{ backgroundColor: swatch }} />
+                        ))}
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <button
@@ -2073,7 +2091,7 @@ export default function DashboardPage() {
                   handleUpdateProfile({
                     name: (document.getElementById('profile-name') as HTMLInputElement).value,
                     email: (document.getElementById('profile-email') as HTMLInputElement).value,
-                    theme: user.theme,
+                    theme: user?.theme || 'dark',
                     reminderTiming: parseInt((document.getElementById('profile-reminder') as HTMLSelectElement).value, 10),
                   });
                 }}

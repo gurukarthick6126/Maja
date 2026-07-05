@@ -26,6 +26,7 @@ Components read: background: var(--bg-base); color: var(--primary);
 | `galaxy` | Galaxy | 🌌 | Deep space, navy/indigo/violet, stars |
 | `jungle` | Jungle | 🌿 | Rich greens, earthy browns, foliage |
 | `beach` | Beach | 🏖️ | Sand, turquoise, coral, sunlight |
+| `ocean` | Ocean | 🌊 | Deep sea blues, bioluminescent cyan/teal |
 | `wild-west` | Wild West | 🤠 | Leather, desert beige, burnt orange, antique gold |
 | `cyberpunk` | Cyberpunk | ⚡ | Neon cyan, magenta, dark futurism |
 | `retro` | Retro | 📼 | Vintage mustard, teal, burnt orange, 70s/80s |
