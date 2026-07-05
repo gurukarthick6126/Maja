@@ -2015,7 +2015,7 @@ export default function DashboardPage() {
                 <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">Full Name</label>
                 <input
                   type="text"
-                  defaultValue={user?.name || ''}
+                  defaultValue={user?.name ?? ''}
                   id="profile-name"
                   placeholder="Enter name"
                   className="w-full px-3 py-2 rounded bg-neutral-950 border border-neutral-800 text-xs focus:border-brand-teal outline-none"
@@ -2026,7 +2026,7 @@ export default function DashboardPage() {
                 <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">Email Address</label>
                 <input
                   type="email"
-                  defaultValue={user?.email || ''}
+                  defaultValue={user?.email ?? ''}
                   id="profile-email"
                   placeholder="Enter email"
                   className="w-full px-3 py-2 rounded bg-neutral-950 border border-neutral-800 text-xs focus:border-brand-teal outline-none"
@@ -2036,7 +2036,7 @@ export default function DashboardPage() {
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">Reminder Window</label>
                 <select
-                  defaultValue={user?.reminderTiming || 2}
+                  defaultValue={user?.reminderTiming ?? 2}
                   id="profile-reminder"
                   className="w-full px-3 py-2 rounded bg-neutral-950 border border-neutral-800 text-xs focus:border-brand-teal outline-none text-white"
                 >
@@ -2084,6 +2084,20 @@ export default function DashboardPage() {
                     </button>
                   ))}
                 </div>
+                <button
+                  onClick={() => {
+                    const nextTheme = user?.theme === 'dark' ? 'light' : 'dark';
+                    handleUpdateProfile({
+                      name: (document.getElementById('profile-name') as HTMLInputElement).value,
+                      email: (document.getElementById('profile-email') as HTMLInputElement).value,
+                      theme: nextTheme,
+                      reminderTiming: parseInt((document.getElementById('profile-reminder') as HTMLSelectElement).value, 10),
+                    });
+                  }}
+                  className="p-2 border border-neutral-800 rounded bg-neutral-900 text-brand-teal hover:text-white transition"
+                >
+                  {user?.theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                </button>
               </div>
 
               <button
@@ -2091,7 +2105,7 @@ export default function DashboardPage() {
                   handleUpdateProfile({
                     name: (document.getElementById('profile-name') as HTMLInputElement).value,
                     email: (document.getElementById('profile-email') as HTMLInputElement).value,
-                    theme: user?.theme || 'dark',
+                    theme: user?.theme ?? 'dark',
                     reminderTiming: parseInt((document.getElementById('profile-reminder') as HTMLSelectElement).value, 10),
                   });
                 }}
