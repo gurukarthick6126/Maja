@@ -27,19 +27,15 @@ export async function callAI(prompt: string, systemPrompt: string): Promise<stri
 
   if (apiKey) {
     try {
-      const ai = new GoogleGenAI({ apiKey });
+      const client = new GoogleGenAI({ apiKey });
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.0-flash',
-        contents: prompt,
-        config: {
-          systemInstruction: systemPrompt,
-          maxOutputTokens: 1500,
-          temperature: 0.4,
-        },
+      const interaction = await client.interactions.create({
+        model: 'gemini-3.5-flash',
+        input: prompt,
+        system_instruction: systemPrompt,
       });
 
-      const text = response.text;
+      const text = interaction.output_text;
       if (text) return text;
       console.warn('Gemini returned empty response, falling back to simulator.');
     } catch (err) {
@@ -61,7 +57,19 @@ function simulateAI(prompt: string, _systemPrompt: string): string {
   }
 
   // 2. Today's top actions
-  if (normalized.includes('what to do right now') || normalized.includes('top 3 actions')) {
+  if (normalized.includes('what to do right now') || normalized.includes('top 3 actions') || normalized.includes('items for review')) {
+    const itemMatches = prompt.match(/- \[(.*?)\] "(.*?)"/g);
+    if (itemMatches && itemMatches.length > 0) {
+      const actions = itemMatches.slice(0, 3).map(match => {
+        const m = match.match(/- \[(.*?)\] "(.*?)"/);
+        return {
+          name: `Work on ${m?.[1]}: ${m?.[2]}`,
+          estimate: '45 mins',
+          reason: 'High priority item from your list.'
+        };
+      });
+      return JSON.stringify({ actions });
+    }
     return JSON.stringify({
       actions: [
         { name: 'Finalize high-priority project deliverables', estimate: '45 mins', reason: 'Due soonest and blocks project completion.' },
@@ -100,13 +108,14 @@ function simulateAI(prompt: string, _systemPrompt: string): string {
   }
 
   // 9. Smart Task Breakdown
-  if (normalized.includes('breakdown') || normalized.includes('suggest tasks')) {
+  if (normalized.includes('breakdown') || normalized.includes('suggest tasks') || normalized.includes('project objective')) {
+    const objectiveMatch = prompt.match(/Project Objective:\s*"(.*?)"/i);
+    const objStr = objectiveMatch ? objectiveMatch[1] : 'the project';
     return JSON.stringify([
-      { name: 'Draft technical design document', estimate: '3 hours' },
-      { name: 'Configure database schema & Prisma migrations', estimate: '2 hours' },
-      { name: 'Implement core backend API endpoints', estimate: '4 hours' },
-      { name: 'Build frontend dashboard layout components', estimate: '5 hours' },
-      { name: 'Write unit tests for authentication logic', estimate: '2 hours' },
+      { name: `Draft specifications and plan for: ${objStr}`, estimate: '2 hours' },
+      { name: `Set up foundation and environment for: ${objStr}`, estimate: '1 hour' },
+      { name: `Implement core features for: ${objStr}`, estimate: '4 hours' },
+      { name: `Review, test and refine: ${objStr}`, estimate: '2 hours' },
     ]);
   }
 
@@ -210,6 +219,14 @@ export async function getTopActions(items: { name: string; type: string; details
     } catch (e) {
       console.warn('Failed parsing AI top actions, using fallback:', e);
     }
+  }
+
+  if (items && items.length > 0) {
+    return items.slice(0, 3).map(i => ({
+      name: `Focus on ${i.type}: ${i.name}`,
+      estimate: '45 mins',
+      reason: `Actionable item based on current priority.`
+    }));
   }
 
   return [
@@ -331,11 +348,10 @@ export async function getSmartTaskBreakdown(objective: string): Promise<{ name: 
   }
 
   return [
-    { name: 'Draft specifications and wireframes', estimate: '4 hours' },
-    { name: 'Configure database schema & Prisma setup', estimate: '2 hours' },
-    { name: 'Implement core backend API endpoints', estimate: '4 hours' },
-    { name: 'Build responsive layout components', estimate: '1 day' },
-    { name: 'Write integration tests and verify', estimate: '3 hours' },
+    { name: `Draft specifications and plan for: ${objective}`, estimate: '2 hours' },
+    { name: `Set up foundation and environment for: ${objective}`, estimate: '1 hour' },
+    { name: `Implement core features for: ${objective}`, estimate: '4 hours' },
+    { name: `Review, test and refine: ${objective}`, estimate: '2 hours' },
   ];
 }
 
